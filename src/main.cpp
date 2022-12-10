@@ -1,4 +1,5 @@
 
+// #include <FastLED.h>
 #include "LPD8806.h"
 #include "SPI.h"
 
@@ -7,11 +8,8 @@
 /*****************************************************************************/
 
 const int NUM_PIXELS = 240;
-// Set the first variable to the NUMBER of pixels. 32 = 32 pixels in a row
-// The LED strips are 32 LEDs per meter but you can extend/cut the strip
 LPD8806 strip = LPD8806(NUM_PIXELS);
-
-uint32_t pixelBuffer[NUM_PIXELS];
+uint32_t pixelBuffer[NUM_PIXELS];// use a local pixel buffer to help with effects/reveals
 
 void setup()
 {
@@ -24,11 +22,11 @@ void setup()
 }
 
 // function prototypes, do not remove these!
-void colorChase(uint32_t c, uint8_t wait);
+// void colorChase(uint32_t c, uint8_t wait);
 void colorWipe(uint32_t c, uint8_t wait);
 void colorEffects(uint32_t c);
 void ditherRevealBuffer(uint8_t wait);
-void dither(uint32_t c, uint8_t wait);
+// void dither(uint32_t c, uint8_t wait);
 void scanner(uint8_t r, uint8_t g, uint8_t b, uint8_t wait);
 void wave(uint32_t c, int repeat, int cycles, uint8_t wait);
 void waveReveal(uint32_t c, int cycles, uint8_t wait);
@@ -40,6 +38,8 @@ void getRainbowBuffer(uint32_t *buffer, int offset);
 void randomReveal(uint8_t wait);
 void wipeRevealBuffer(uint8_t wait);
 void colorScanner(uint32_t color, uint8_t wait);
+void theaterChaseRainbowBuffer();
+void theaterChaseRainbow(uint8_t wait);
 
 uint32_t Wheel(uint16_t WheelPos);
 
@@ -85,7 +85,8 @@ void loop()
 
 void revealAndPlayEffect(uint32_t color)
 {
-  int effect = rand() % 3;
+  int effect = rand() % 4;
+  // int effect = 3;
   if (effect == 0)
   {
     getWaveBuffer(pixelBuffer, color, 5, 0);
@@ -101,6 +102,14 @@ void revealAndPlayEffect(uint32_t color)
   if (effect == 2)
   {
     colorScanner(color, delayMsec);
+  }
+  if (effect == 3)
+  {
+    // generate a buffer
+    theaterChaseRainbowBuffer();
+    // reveal the buffer...
+    randomReveal(delayMsec);
+    theaterChaseRainbow(delayMsec);
   }
 }
 
@@ -128,24 +137,6 @@ void wipeRevealBuffer(uint8_t wait)
   }
 }
 
-// void colorEffects(uint32_t color)
-// {
-//   byte r = getRGB(color, 'r');
-//   byte g = getRGB(color, 'g');
-//   byte b = getRGB(color, 'b');
-//   scanner(r, b, g, delayMsec);
-//   colorWipe(color, delayMsec);
-//   colorWipe(BlackColor, delayMsec);
-//   dither(color, delayMsec);
-//   waveReveal(color, 5, delayMsec);
-//   wave(color, 2, 5, delayMsec);
-//   dither(BlackColor, delayMsec);
-//   // colorWipe(BlackColor, delayMsec);
-//   rainbowWipe(delayMsec);
-//   rainbowCycle(5, delayMsec);
-//   colorWipe(BlackColor, delayMsec);
-// }
-
 void colorScanner(uint32_t color, uint8_t wait)
 {
   byte r = getRGB(color, 'r');
@@ -153,16 +144,6 @@ void colorScanner(uint32_t color, uint8_t wait)
   byte b = getRGB(color, 'b');
   scanner(r, b, g, wait);
 }
-
-// void basicEffects()
-// {
-//   scanner(0, 127, 0, delayMsec); // blue, fast
-//   colorWipe(strip.Color(0, 127, 0), delayMsec); // blue
-//   colorWipe(strip.Color(0, 0, 0), delayMsec); // blue
-//   rainbowWipe(delayMsec);
-//   rainbowCycle(5, delayMsec);                 // make it go through the cycle fairly fast
-//   colorWipe(strip.Color(0, 0, 0), delayMsec); // black
-// }
 
 void getRainbowBuffer(uint32_t *buffer, int offset)
 {
@@ -216,24 +197,24 @@ void colorWipe(uint32_t c, uint8_t wait)
 
 // Chase a dot down the strip
 // good for testing purposes
-void colorChase(uint32_t c, uint8_t wait)
-{
-  int i;
+// void colorChase(uint32_t c, uint8_t wait)
+// {
+//   int i;
 
-  for (i = 0; i < strip.numPixels(); i++)
-  {
-    strip.setPixelColor(i, 0); // turn all pixels off
-  }
+//   for (i = 0; i < strip.numPixels(); i++)
+//   {
+//     strip.setPixelColor(i, 0); // turn all pixels off
+//   }
 
-  for (i = 0; i < strip.numPixels(); i++)
-  {
-    strip.setPixelColor(i, c); // set one pixel
-    strip.show();              // refresh strip display
-    delay(wait);               // hold image for a moment
-    strip.setPixelColor(i, 0); // erase pixel (but don't refresh yet)
-  }
-  strip.show(); // for last erased pixel
-}
+//   for (i = 0; i < strip.numPixels(); i++)
+//   {
+//     strip.setPixelColor(i, c); // set one pixel
+//     strip.show();              // refresh strip display
+//     delay(wait);               // hold image for a moment
+//     strip.setPixelColor(i, 0); // erase pixel (but don't refresh yet)
+//   }
+//   strip.show(); // for last erased pixel
+// }
 
 void ditherRevealBuffer(uint8_t wait)
 {
@@ -267,35 +248,35 @@ void ditherRevealBuffer(uint8_t wait)
 
 // An "ordered dither" fills every pixel in a sequence that looks
 // sparkly and almost random, but actually follows a specific order.
-void dither(uint32_t c, uint8_t wait)
-{
+// void dither(uint32_t c, uint8_t wait)
+// {
 
-  // Determine highest bit needed to represent pixel index
-  int hiBit = 0;
-  int n = strip.numPixels() - 1;
-  for (int bit = 1; bit < 0x8000; bit <<= 1)
-  {
-    if (n & bit)
-      hiBit = bit;
-  }
+//   // Determine highest bit needed to represent pixel index
+//   int hiBit = 0;
+//   int n = strip.numPixels() - 1;
+//   for (int bit = 1; bit < 0x8000; bit <<= 1)
+//   {
+//     if (n & bit)
+//       hiBit = bit;
+//   }
 
-  int bit, reverse;
-  for (int i = 0; i < (hiBit << 1); i++)
-  {
-    // Reverse the bits in i to create ordered dither:
-    reverse = 0;
-    for (bit = 1; bit <= hiBit; bit <<= 1)
-    {
-      reverse <<= 1;
-      if (i & bit)
-        reverse |= 1;
-    }
-    strip.setPixelColor(reverse, c);
-    strip.show();
-    delay(wait);
-  }
-  delay(250); // Hold image for 1/4 sec
-}
+//   int bit, reverse;
+//   for (int i = 0; i < (hiBit << 1); i++)
+//   {
+//     // Reverse the bits in i to create ordered dither:
+//     reverse = 0;
+//     for (bit = 1; bit <= hiBit; bit <<= 1)
+//     {
+//       reverse <<= 1;
+//       if (i & bit)
+//         reverse |= 1;
+//     }
+//     strip.setPixelColor(reverse, c);
+//     strip.show();
+//     delay(wait);
+//   }
+//   delay(250); // Hold image for 1/4 sec
+// }
 
 // "Larson scanner" = Cylon/KITT bouncing light effect
 void scanner(uint8_t r, uint8_t g, uint8_t b, uint8_t wait)
@@ -431,4 +412,226 @@ uint32_t Wheel(uint16_t WheelPos)
     break;
   }
   return (strip.Color(r, g, b));
+}
+// void nscale8( uint32_t* pixelBuffer, uint16_t num_leds, uint8_t scale)
+// {
+//     for( uint16_t i = 0; i < num_leds; ++i) {
+//         pixelBuffer[i].nscale8( scale);
+//     }
+// }
+
+#define LIB8STATIC __attribute__ ((unused)) static inline
+#define LIB8STATIC_ALWAYS_INLINE __attribute__ ((always_inline)) static inline
+
+#if defined(__AVR__)
+
+// AVR ATmega and friends Arduino
+
+#define QADD8_C 0
+#define QADD7_C 0
+#define QSUB8_C 0
+#define ABS8_C 0
+#define ADD8_C 0
+#define SUB8_C 0
+#define AVG8_C 0
+#define AVG7_C 0
+#define AVG16_C 0
+#define AVG15_C 0
+
+#define QADD8_AVRASM 1
+#define QADD7_AVRASM 1
+#define QSUB8_AVRASM 1
+#define ABS8_AVRASM 1
+#define ADD8_AVRASM 1
+#define SUB8_AVRASM 1
+#define AVG8_AVRASM 1
+#define AVG7_AVRASM 1
+#define AVG16_AVRASM 1
+#define AVG15_AVRASM 1
+
+// Note: these require hardware MUL instruction
+//       -- sorry, ATtiny!
+#define SCALE8_C 0
+#define SCALE16BY8_C 0
+#define SCALE16_C 0
+#define MUL8_C 0
+#define QMUL8_C 0
+#define EASE8_C 0
+#define BLEND8_C 0
+#define SCALE8_AVRASM 1
+#define SCALE16BY8_AVRASM 1
+#define SCALE16_AVRASM 1
+#define MUL8_AVRASM 1
+#define QMUL8_AVRASM 1
+#define EASE8_AVRASM 1
+#define CLEANUP_R1_AVRASM 1
+#define BLEND8_AVRASM 1
+#endif // end of !defined(LIB8_ATTINY)
+
+// end of #elif defined(__AVR__)
+/// This version of scale8 does not clean up the R1 register on AVR
+/// If you are doing several 'scale8's in a row, use this, and
+/// then explicitly call cleanup_R1.
+LIB8STATIC_ALWAYS_INLINE uint8_t scale8_LEAVING_R1_DIRTY( uint8_t i, uint8_t scale)
+{
+#if SCALE8_C == 1
+#if (FASTLED_SCALE8_FIXED == 1)
+    return (((uint16_t)i) * ((uint16_t)(scale)+1)) >> 8;
+#else
+    return ((int)i * (int)(scale) ) >> 8;
+#endif
+#elif SCALE8_AVRASM == 1
+    asm volatile(
+#if (FASTLED_SCALE8_FIXED==1)
+        // Multiply 8-bit i * 8-bit scale, giving 16-bit r1,r0
+        "mul %0, %1          \n\t"
+        // Add i to r0, possibly setting the carry flag
+        "add r0, %0         \n\t"
+        // load the immediate 0 into i (note, this does _not_ touch any flags)
+        "ldi %0, 0x00       \n\t"
+        // walk and chew gum at the same time
+        "adc %0, r1          \n\t"
+#else
+        /* Multiply 8-bit i * 8-bit scale, giving 16-bit r1,r0 */
+        "mul %0, %1    \n\t"
+        /* Move the high 8-bits of the product (r1) back to i */
+        "mov %0, r1    \n\t"
+#endif
+        /* R1 IS LEFT DIRTY HERE; YOU MUST ZERO IT OUT YOURSELF  */
+        /* "clr __zero_reg__    \n\t" */
+        : "+a" (i)      /* writes to i */
+        : "a"  (scale)  /* uses scale */
+        : "r0", "r1"    /* clobbers r0, r1 */
+    );
+    // Return the result
+    return i;
+#else
+#error "No implementation for scale8_LEAVING_R1_DIRTY available."
+#endif
+}
+
+/// ANSI unsigned short _Fract.  range is 0 to 0.99609375
+///                 in steps of 0.00390625
+// typedef uint8_t   fract8;   ///< ANSI: unsigned short _Fract
+
+/// Clean up the r1 register after a series of *LEAVING_R1_DIRTY calls
+LIB8STATIC_ALWAYS_INLINE void cleanup_R1()
+{
+#if CLEANUP_R1_AVRASM == 1
+    // Restore r1 to "0"; it's expected to always be that
+    asm volatile( "clr __zero_reg__  \n\t" : : : "r1" );
+#endif
+}
+
+/// scale three one byte values by a fourth one, which is treated as
+///         the numerator of a fraction whose demominator is 256
+///         In other words, it computes r,g,b * (scale / 256)
+///
+///         THIS FUNCTION ALWAYS MODIFIES ITS ARGUMENTS IN PLACE
+
+LIB8STATIC void nscale8x3( uint8_t& r, uint8_t& g, uint8_t& b, uint8_t scale)
+{
+#if SCALE8_C == 1
+#if (FASTLED_SCALE8_FIXED == 1)
+    uint16_t scale_fixed = scale + 1;
+    r = (((uint16_t)r) * scale_fixed) >> 8;
+    g = (((uint16_t)g) * scale_fixed) >> 8;
+    b = (((uint16_t)b) * scale_fixed) >> 8;
+#else
+    r = ((int)r * (int)(scale) ) >> 8;
+    g = ((int)g * (int)(scale) ) >> 8;
+    b = ((int)b * (int)(scale) ) >> 8;
+#endif
+#elif SCALE8_AVRASM == 1
+    r = scale8_LEAVING_R1_DIRTY(r, scale);
+    g = scale8_LEAVING_R1_DIRTY(g, scale);
+    b = scale8_LEAVING_R1_DIRTY(b, scale);
+    cleanup_R1();
+#else
+#error "No implementation for nscale8x3 available."
+#endif
+}
+// void fadeToBlackBy(int amnt){
+//       for (int i=0; i < strip.numPixels()*3; i++) {
+
+//         // random colored speckles that blink in and fade smoothly
+//         fadeToBlackBy(leds, NUM_LEDS, 10);
+//         int pos = random16(NUM_LEDS);
+//         leds[pos] += CHSV(gHue + random8(64), 200, 255);
+//         FastLED.show();
+//       }
+// }
+// void confetti()
+// {
+//         for (int i=0; i < strip.numPixels()*3; i++) {
+
+//         // random colored speckles that blink in and fade smoothly
+//         fadeToBlackBy(10);
+//         int pos = rand() % NUM_PIXELS;
+//         pixelBuffer[pos] = CHSV(gHue + random8(64), 200, 255);
+//         // FastLED.show();
+//         strip.show()
+//       }
+
+
+// }
+
+
+//Theatre-style crawling lights.
+void theaterChase(uint32_t c, uint8_t wait) {
+  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
+    for (int q=0; q < 3; q++) {
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, c);    //turn every third pixel on
+      }
+      strip.show();
+     
+      delay(wait);
+     
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
+      }
+    }
+  }
+}
+
+//Theatre-style crawling lights with rainbow effect
+// or as i like to call it - the RAINBOW VORTEX
+void theaterChaseRainbow(uint8_t wait) {
+  byte r, g, b;
+  for (int j=0; j < 384; j++) {     // cycle all 384 colors in the wheel
+    for (int q=0; q < 5; q++) {
+      for (int i=0; i < strip.numPixels(); i=i+5) {
+        strip.setPixelColor(i+q, Wheel( (i+(j*q)) % 384));    //turn every third pixel on
+      }
+      strip.show();
+      
+      delay(50);
+      
+      for (int i=0; i < strip.numPixels(); i=i+5) {
+        uint32_t c = strip.getPixelColor(i+q);
+        // Need to decompose color into its r, g, b elements
+        b = (c >> 16) & 0x7f;
+        r = (c >> 8) & 0x7f;
+        g = c & 0x7f;
+        if(i%5<1){
+          strip.setPixelColor(i+q,  BlackColor);        //turn every third pixel off
+        }else {
+          strip.setPixelColor(i+q,  strip.Color((uint8_t)(r*0.25),(uint8_t)(b*0.25),(uint8_t)(g*0.25)));        //turn every third pixel off
+        }
+        // strip.setPixelColor(i+q,  Wheel( (i+j-(q)) % 384));        //turn every third pixel off
+      }
+    }
+  }
+}
+
+// this needs review..
+void theaterChaseRainbowBuffer(){
+  for (int i=0; i < strip.numPixels(); i++) {
+    if(i%4>0){
+      pixelBuffer[i] = BlackColor;
+    }else {
+      pixelBuffer[i] = Wheel( i % 384);
+    }
+  }
 }
